@@ -1,0 +1,36 @@
+{
+  "event_id": "Ev_001",
+  "run_id": "run_001",
+  "status": "COMPLETED",
+  "results": {
+    "google_folder": {
+      "created": true,
+      "external_id": "drive_folder_001"
+    },
+    "quickbooks_project": {
+      "created": true,
+      "external_id": "qb_project_001"
+    },
+    "quickbooks_estimate": {
+      "created": true,
+      "external_id": "qb_estimate_001"
+    },
+    "finish_material_sheet": {
+      "created": true,
+      "external_id": "sheet_materials_001"
+    },
+    "welcome_email": {
+      "sent": true,
+      "message_id": "gmail_msg_001"
+    },
+    "pm_sheet": {
+      "updated": true,
+      "external_id": "sheet_row_001"
+    },
+    "deposit_invoice": {
+      "sent": true,
+      "external_id": "qb_invoice_001"
+    }
+  },
+  "errors": []
+}

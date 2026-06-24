@@ -1,0 +1,11 @@
+{
+  "slack_event_id": "Ev_001",
+  "channel": "contracts",
+  "received_at": "2026-06-24T10:00:00Z",
+  "data": {
+    "client_name": "Alex Morgan",
+    "client_email": "alex@example.com",
+    "project_type": "Sunroom Conversion",
+    "contract_file": "contract_alex_morgan_signed.pdf"
+  }
+}
