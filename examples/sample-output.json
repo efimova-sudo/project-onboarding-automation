@@ -5,7 +5,13 @@
   "results": {
     "google_folder": {
       "created": true,
-      "external_id": "drive_folder_001"
+      "external_id": "drive_folder_001",
+      "name": "Alex Morgan | 742 Evergreen Terrace, Salt Lake City, UT 84101 | Sunroom Conversion"
+    },
+    "contract_upload": {
+      "uploaded": true,
+      "external_id": "drive_file_001",
+      "destination": "Contract & Change Orders/Proposal - Alex Morgan.pdf"
     },
     "quickbooks_project": {
       "created": true,
@@ -13,11 +19,13 @@
     },
     "quickbooks_estimate": {
       "created": true,
-      "external_id": "qb_estimate_001"
+      "external_id": "qb_estimate_001",
+      "line_items": 7
     },
     "finish_material_sheet": {
       "created": true,
-      "external_id": "sheet_materials_001"
+      "external_id": "sheet_materials_001",
+      "rows_written": 8
     },
     "welcome_email": {
       "sent": true,
@@ -29,7 +37,8 @@
     },
     "deposit_invoice": {
       "sent": true,
-      "external_id": "qb_invoice_001"
+      "external_id": "qb_invoice_001",
+      "amount": 2000.00
     }
   },
   "errors": []

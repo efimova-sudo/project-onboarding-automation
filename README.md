@@ -17,6 +17,7 @@ the workflow:
 - prevents duplicate processing using `event_id`;
 - creates an audit run;
 - creates a project folder in Google Drive;
+- uploads the signed contract PDF to the project folder;
 - creates a project and estimate in QuickBooks;
 - creates a finish material sheet in Google Sheets;
 - sends a welcome email to the client;
@@ -50,9 +51,12 @@ the workflow:
 project-onboarding-automation/
 ├── README.md
 ├── docs/
-│   └── architecture.md      # System diagram and component ownership
+│   ├── architecture.md      # System diagram and component ownership
+│   ├── infrastructure.md    # Existing tools structure and field mapping
+│   └── data-extraction.md   # How PDF data is extracted and mapped
 ├── examples/
-│   ├── sample-input.json    # Synthetic Slack trigger payload
+│   ├── sample-contract.pdf  # Synthetic signed contract (workflow input)
+│   ├── sample-input.json    # Parsed Slack trigger payload
 │   └── sample-output.json   # Expected workflow result
 ├── workflows/               # n8n workflow exports (added after build)
 ├── screenshots/             # n8n canvas screenshots
