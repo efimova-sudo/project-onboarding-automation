@@ -221,3 +221,58 @@ Sent immediately after the estimate is saved.
 | Customer rate | Amount of the Deposit milestone | PDF milestones table |
 | Qty | `1` | Fixed |
 | Customer | Linked to project customer | Created in step 1 |
+
+---
+
+## Audit Logging — Google Sheets
+
+Audit logs are written by `SYS - Audit Service` to a dedicated Google Sheets file (`TEST_Automation_Logs` in development; a production equivalent in prod). The file has two tabs.
+
+### Tab: automation_runs
+
+One row per workflow execution. Written at start (`CREATE_RUN`) and updated at finish (`UPDATE_RUN`).
+
+| Column | Description |
+|---|---|
+| `run_id` | Unique run identifier — `RUN-{event_ts}` |
+| `execution_id` | n8n execution ID |
+| `workflow_id` | n8n workflow ID |
+| `workflow_name` | Human-readable workflow name |
+| `workflow_version` | Semver string (e.g. `1.0.0`) |
+| `environment` | `TEST`, `STAGING`, or `PROD` |
+| `correlation_id` | Slack `event_ts` — ties all audit records for one contract |
+| `entity_type` | Always `PROJECT` for this system |
+| `entity_id` | Slack `event_ts` |
+| `source_type` | `SLACK_FILE_SHARED` |
+| `source_event_id` | Slack `event_ts` — used as deduplication key |
+| `started_at` | ISO datetime when the run opened |
+| `finished_at` | ISO datetime when the run closed (empty while running) |
+| `status` | `RUNNING` → `SUCCESS` / `FAILED` / `PARTIAL_FAILURE` etc. |
+| `last_completed_step` | Last step confirmed complete (e.g. `DEPOSIT_INVOICE_SENT`) |
+| `failed_step` | Step that failed (empty on success) |
+| `error_type` | Error category code (empty on success) |
+| `error_code` | Structured error code (empty on success) |
+| `error_summary` | Human-readable error description (empty on success) |
+| `retry_count` | Number of retries (0 for first attempt) |
+| `execution_url` | Direct link to the n8n execution (optional) |
+
+### Tab: automation_events
+
+One row per discrete step within a run. Written via `APPEND_EVENT`.
+
+| Column | Description |
+|---|---|
+| `event_id` | Unique event identifier |
+| `run_id` | Parent run — foreign key to `automation_runs.run_id` |
+| `correlation_id` | Same as parent run |
+| `occurred_at` | ISO datetime of the event |
+| `step` | Step name (e.g. `PROJECT_FOLDER_CREATED`) |
+| `service` | External service involved (e.g. `GOOGLE_DRIVE`) |
+| `action` | Action performed (e.g. `CREATE_FOLDER`) |
+| `status` | `STARTED`, `SUCCESS`, `FAILED`, or `SKIPPED` |
+| `resource_type` | Type of resource created/modified (optional) |
+| `resource_id` | ID of the resource (optional) |
+| `resource_url` | URL of the resource (optional) |
+| `duration_ms` | Time taken in milliseconds (optional) |
+| `message` | Human-readable description (optional) |
+| `metadata_json` | JSON blob of additional context (optional) |

@@ -1,0 +1,313 @@
+{
+  "name": "SUB - Create Project Workspace",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SUB - Create Project Workspace\nInput:  { state }\nOutput: { state, workspace: { folder_id, upload_id } }\n\nCreates project folder, 6 subfolders, uploads contract PDF.\nReturns all incoming data plus workspace results.",
+        "height": 496,
+        "width": 2036,
+        "color": 3
+      },
+      "id": "2d4aad35-25f0-42f2-9e3a-b57e168cc121",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        96,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"state\": {}\n}"
+      },
+      "id": "ae50a7b7-17c0-4b53-9ae9-32d3a84bf441",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"name\": \"{{ $json.state.folder_name }}\", \"mimeType\": \"application/vnd.google-apps.folder\", \"parents\": [\"1iuQiS710MucVDHgROVIPIKhrG6kej7RR\"] }",
+        "options": {}
+      },
+      "id": "a6634a7a-3323-444a-9bb4-58788e8a0870",
+      "name": "HTTP: Drive - Create Project Folder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        224
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Kpef4qI4tG0y9RL6",
+          "name": "Google Drive OAuth - 2026"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inp = $input.first().json;\nconst subfolders = [\n  'Contract and Change Orders',\n  'Finish Material',\n  'Inspirations',\n  'Invoices',\n  'Plans and Reports',\n  'Media',\n];\n// inp is the Drive Create Folder response: { id, name, mimeType }\n// Spread it so each batch item carries the folder id, then add subfolder_name\nreturn subfolders.map(name => ({ json: { ...inp, subfolder_name: name } }));"
+      },
+      "id": "1578320b-636f-4c51-9352-bf8c92d6a0e6",
+      "name": "Code: Prepare Subfolder Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"name\": \"{{ $json.subfolder_name }}\", \"mimeType\": \"application/vnd.google-apps.folder\", \"parents\": [\"{{ $json.id }}\"] }",
+        "options": {}
+      },
+      "id": "a807531a-c51d-43e8-a8b0-7f613d0e07e7",
+      "name": "HTTP: Drive - Create Subfolder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        784,
+        224
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Kpef4qI4tG0y9RL6",
+          "name": "Google Drive OAuth - 2026"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.state.slack_file_url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "slackApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "6bc4e890-3089-4d80-a2a0-8687751e0f6a",
+      "name": "HTTP: Download PDF from Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1488,
+        224
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "KZvZ6UveVwF3lEvB",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n  {\n    state: $('Collapse Back To One Item').first().json.state,\n    workspace: {\n      ...$('Collapse Back To One Item').first().json.workspace,\n      upload_id: $json.id\n    }\n  }\n}}",
+        "options": {}
+      },
+      "id": "4c7c5fde-6bfc-47cd-a6f3-e755a3f6e6af",
+      "name": "Set: Return Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1904,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst state = $json.state;\nconst projectFolder = $('HTTP: Drive - Create Project Folder').first().json;\n\nconst subfolders = items.map(item => ({\n  id: item.json.id,\n  name: item.json.name,\n}));\n\nconst subfolderByName = Object.fromEntries(\n  subfolders.map(folder => [folder.name, folder.id])\n);\n\nconst contractFolderId = subfolderByName['Contract and Change Orders'];\n\nif (!contractFolderId) {\n  throw new Error(\n    'Missing subfolder: Contract and Change Orders. Created: ' +\n    subfolders.map(f => f.name).join(', ')\n  );\n}\n\nreturn [{\n  json: {\n    state,\n    workspace: {\n      folder_id: projectFolder.id,\n      folder_name: projectFolder.name,\n      subfolders,\n      subfolder_ids: {\n        contracts: contractFolderId,\n        finish_material: subfolderByName['Finish Material'],\n        inspirations: subfolderByName['Inspirations'],\n        invoices: subfolderByName['Invoices'],\n        plans_reports: subfolderByName['Plans and Reports'],\n        media: subfolderByName['Media'],\n      },\n    },\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        224
+      ],
+      "id": "9e0a6533-2d8f-4e0c-9dbb-3ae9e7d84976",
+      "name": "Collapse Back To One Item"
+    },
+    {
+      "parameters": {
+        "name": "={{ $('Collapse Back To One Item').first().json.state.contract_pdf_name + '.pdf' }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Collapse Back To One Item').first().json.workspace.subfolder_ids.contracts }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1696,
+        224
+      ],
+      "id": "4e187c6e-8788-4c72-984e-2fc78ec84415",
+      "name": "Upload contract",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Kpef4qI4tG0y9RL6",
+          "name": "Google Drive OAuth - 2026"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1040,
+        224
+      ],
+      "id": "28511c0b-5cbc-442a-98ea-1ef4d65416e9",
+      "name": "Get State"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Drive - Create Project Folder",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get State",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "HTTP: Drive - Create Project Folder": {
+      "main": [
+        [
+          {
+            "node": "Code: Prepare Subfolder Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Prepare Subfolder Items": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Drive - Create Subfolder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Drive - Create Subfolder": {
+      "main": [
+        [
+          {
+            "node": "Get State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Download PDF from Slack": {
+      "main": [
+        [
+          {
+            "node": "Upload contract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collapse Back To One Item": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Download PDF from Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload contract": {
+      "main": [
+        [
+          {
+            "node": "Set: Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get State": {
+      "main": [
+        [
+          {
+            "node": "Collapse Back To One Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "50834f7a-3881-4ff8-a80f-089d2769ca09",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3ceb589bad47c552dc5f920f0a41395dfd8beb13ed2d06dbe2f26e54324f15ac"
+  },
+  "nodeGroups": [],
+  "id": "JuWnIuvJdDFsTVMU",
+  "tags": []
+}

@@ -1,0 +1,1575 @@
+{
+  "name": "SYS - Audit Service",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"operation\": \"CREATE_RUN\",\n  \"payload\": {}\n}"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -96,
+        -16
+      ],
+      "id": "cdb125cc-e433-4545-a65d-cb11e04971db",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const operation = String($json.operation ?? '')\n  .trim()\n  .toUpperCase();\n\nconst payload = $json.payload;\n\nif (!operation) {\n  throw new Error('AUDIT_REQUEST_INVALID: operation is required');\n}\n\nif (\n  payload === null ||\n  typeof payload !== 'object' ||\n  Array.isArray(payload)\n) {\n  throw new Error('AUDIT_REQUEST_INVALID: payload must be an object');\n}\n\nreturn {\n  json: {\n    operation,\n    payload,\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "8c7662f1-372a-4c47-a06a-0e0d2eee3d66",
+      "name": "Validate Audit Request"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation === 'CREATE_RUN' }}",
+                    "rightValue": "CREATE_RUN",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "5741c88d-1667-4d93-9d9a-0a6221186c1f"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "CREATE_RUN"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "540dd60e-3580-40df-9c3d-d88fc6f8ac9d",
+                    "leftValue": "={{ $json.operation === 'APPEND_EVENT' }}",
+                    "rightValue": "APPEND_EVENT",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "APPEND_EVENT"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "d8ffd144-9f45-4e67-971f-0f75e750ff81",
+                    "leftValue": "={{ $json.operation === 'UPDATE_RUN' }}",
+                    "rightValue": "UPDATE_RUN",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "UPDATE_RUN"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        416,
+        -32
+      ],
+      "id": "e598326c-6a00-4fe8-ab51-7f05a083d767",
+      "name": "Route Audit Operation"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"operation\": \"UPDATE_RUN\",\n  \"payload\": {\n    \"run_id\": \"RUN-TEST-001\",\n    \"patch\": {\n      \"status\": \"RUNNING\",\n      \"last_completed_step\": \"PROJECT_FOLDER_CREATED\"\n    }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        48,
+        176
+      ],
+      "id": "a627afcf-4838-4c24-862b-4feb180e4ac3",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ `AUDIT_OPERATION_UNROUTED: ${$json.operation}` }}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        544,
+        288
+      ],
+      "id": "481e21e5-7ed2-4eaf-99c6-f3eddd955d2e",
+      "name": "Reject Unrouted Operation"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const run = $json.payload?.run;\n\nif (!run || typeof run !== 'object' || Array.isArray(run)) {\n  throw new Error('AUDIT_CREATE_RUN_INVALID: payload.run is required');\n}\n\nconst requiredStringFields = [\n  'run_id',\n  'execution_id',\n  'workflow_id',\n  'workflow_name',\n  'workflow_version',\n  'environment',\n  'correlation_id',\n  'entity_type',\n  'entity_id',\n  'source_type',\n  'source_event_id',\n  'started_at',\n  'status',\n  'last_completed_step',\n];\n\nconst invalidFields = requiredStringFields.filter((field) => {\n  const value = run[field];\n  return typeof value !== 'string' || value.trim() === '';\n});\n\nif (invalidFields.length > 0) {\n  throw new Error(\n    `AUDIT_CREATE_RUN_INVALID: missing or invalid fields: ${invalidFields.join(', ')}`\n  );\n}\n\nconst allowedEnvironments = new Set(['TEST', 'STAGING', 'PROD']);\n\nif (!allowedEnvironments.has(run.environment)) {\n  throw new Error(\n    `AUDIT_CREATE_RUN_INVALID: unsupported environment \"${run.environment}\"`\n  );\n}\n\nif (run.status !== 'RUNNING') {\n  throw new Error(\n    `AUDIT_CREATE_RUN_INVALID: initial status must be RUNNING`\n  );\n}\n\nif (Number.isNaN(Date.parse(run.started_at))) {\n  throw new Error(\n    'AUDIT_CREATE_RUN_INVALID: started_at must be a valid ISO datetime'\n  );\n}\n\nconst retryCount = run.retry_count ?? 0;\n\nif (!Number.isInteger(retryCount) || retryCount < 0) {\n  throw new Error(\n    'AUDIT_CREATE_RUN_INVALID: retry_count must be a non-negative integer'\n  );\n}\n\nreturn {\n  json: {\n    operation: 'CREATE_RUN',\n    run: {\n      ...run,\n      retry_count: retryCount,\n    },\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        -304
+      ],
+      "id": "d843e909-948e-485d-812f-43279f28f2df",
+      "name": "Validate CREATE_RUN"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM",
+          "mode": "list",
+          "cachedResultName": "TEST_Automation_Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "automation_runs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "run_id",
+              "lookupValue": "={{ $json.run.run_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        976,
+        -304
+      ],
+      "id": "af3061fe-d283-4de8-a027-dae319dbf80f",
+      "name": "Find Existing Run",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LV8YgQHda89gL6UB",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "524c0393-ff34-4eeb-a15f-286cfc8ace51",
+              "leftValue": "={{ Boolean($json.run_id) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1184,
+        -304
+      ],
+      "id": "a4925b64-cbbf-4ad0-8d37-cf0e7249fcb3",
+      "name": "Run Already Exists?"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ `AUDIT_RUN_CONFLICT: run \"${$json.run_id}\" already exists` }}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        -432
+      ],
+      "id": "95a5718e-0481-49c5-873e-f6d404a15e6e",
+      "name": "Reject Duplicate Run"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const run = $('Validate CREATE_RUN').item.json.run;\n\nreturn {\n  json: {\n    run_id: run.run_id,\n    execution_id: run.execution_id,\n    workflow_id: run.workflow_id,\n    workflow_name: run.workflow_name,\n    workflow_version: run.workflow_version,\n    environment: run.environment,\n    correlation_id: run.correlation_id,\n    entity_type: run.entity_type,\n    entity_id: run.entity_id,\n    source_type: run.source_type,\n    source_event_id: run.source_event_id,\n    started_at: run.started_at,\n\n    finished_at: '',\n\n    status: run.status,\n    last_completed_step: run.last_completed_step,\n\n    failed_step: '',\n    error_type: '',\n    error_code: '',\n    error_summary: '',\n\n    retry_count: run.retry_count,\n    execution_url: run.execution_url ?? '',\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        -288
+      ],
+      "id": "9dc32430-3558-4061-94e2-a2f0d1668175",
+      "name": "Map Run Row"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM",
+          "mode": "list",
+          "cachedResultName": "TEST_Automation_Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "automation_runs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "run_id",
+              "displayName": "run_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_version",
+              "displayName": "workflow_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "project_id",
+              "displayName": "project_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source_event_id",
+              "displayName": "source_event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_completed_step",
+              "displayName": "last_completed_step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "failed_step",
+              "displayName": "failed_step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_type",
+              "displayName": "error_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_summary",
+              "displayName": "error_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "retry_count",
+              "displayName": "retry_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_url",
+              "displayName": "execution_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_id",
+              "displayName": "workflow_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "correlation_id",
+              "displayName": "correlation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "entity_type",
+              "displayName": "entity_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "entity_id",
+              "displayName": "entity_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "source_type",
+              "displayName": "source_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "error_code",
+              "displayName": "error_code",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1632,
+        -288
+      ],
+      "id": "010a511a-ed31-40a6-967d-87e1a9242167",
+      "name": "Append Run",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LV8YgQHda89gL6UB",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const run = $('Validate CREATE_RUN').item.json.run;\n\nreturn {\n  json: {\n    success: true,\n    operation: 'CREATE_RUN',\n    data: {\n      run_id: run.run_id,\n      status: run.status,\n      persisted_at: $now.toISO(),\n      storage: 'GOOGLE_SHEETS',\n    },\n    error: null,\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        -288
+      ],
+      "id": "21160267-375e-4489-8ce3-a8f92bbeeacf",
+      "name": "Return CREATE_RUN Result"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const event = $json.payload?.event;\n\nif (!event || typeof event !== 'object' || Array.isArray(event)) {\n  throw new Error(\n    'AUDIT_APPEND_EVENT_INVALID: payload.event is required'\n  );\n}\n\nconst requiredStringFields = [\n  'event_id',\n  'run_id',\n  'correlation_id',\n  'occurred_at',\n  'step',\n  'service',\n  'action',\n  'status',\n];\n\nconst invalidFields = requiredStringFields.filter((field) => {\n  const value = event[field];\n  return typeof value !== 'string' || value.trim() === '';\n});\n\nif (invalidFields.length > 0) {\n  throw new Error(\n    `AUDIT_APPEND_EVENT_INVALID: missing or invalid fields: ${invalidFields.join(', ')}`\n  );\n}\n\nif (Number.isNaN(Date.parse(event.occurred_at))) {\n  throw new Error(\n    'AUDIT_APPEND_EVENT_INVALID: occurred_at must be a valid ISO datetime'\n  );\n}\n\nconst allowedStatuses = new Set([\n  'STARTED',\n  'SUCCESS',\n  'FAILED',\n  'SKIPPED',\n]);\n\nif (!allowedStatuses.has(event.status)) {\n  throw new Error(\n    `AUDIT_APPEND_EVENT_INVALID: unsupported status \"${event.status}\"`\n  );\n}\n\nconst durationMs = event.duration_ms ?? null;\n\nif (\n  durationMs !== null &&\n  (!Number.isInteger(durationMs) || durationMs < 0)\n) {\n  throw new Error(\n    'AUDIT_APPEND_EVENT_INVALID: duration_ms must be null or a non-negative integer'\n  );\n}\n\nconst resource = event.resource ?? null;\n\nif (\n  resource !== null &&\n  (typeof resource !== 'object' || Array.isArray(resource))\n) {\n  throw new Error(\n    'AUDIT_APPEND_EVENT_INVALID: resource must be null or an object'\n  );\n}\n\nconst metadata = event.metadata ?? {};\n\nif (\n  metadata === null ||\n  typeof metadata !== 'object' ||\n  Array.isArray(metadata)\n) {\n  throw new Error(\n    'AUDIT_APPEND_EVENT_INVALID: metadata must be an object'\n  );\n}\n\nreturn {\n  json: {\n    operation: 'APPEND_EVENT',\n    event: {\n      ...event,\n      duration_ms: durationMs,\n      resource,\n      metadata,\n      message: event.message ?? '',\n    },\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        -96
+      ],
+      "id": "5affd9be-0400-4be0-b209-1a8246eb6999",
+      "name": "Validate APPEND_EVENT"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM",
+          "mode": "list",
+          "cachedResultName": "TEST_Automation_Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "automation_runs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "run_id",
+              "lookupValue": "={{ $('Validate APPEND_EVENT').item.json.event.run_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        960,
+        -96
+      ],
+      "id": "5c9cbbe1-765e-4150-8d7e-e6dc56ec62f7",
+      "name": "Find Parent Run",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LV8YgQHda89gL6UB",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "de23082a-0544-4627-891c-646d136a12a2",
+              "leftValue": "={{ Boolean($json.run_id) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1168,
+        -96
+      ],
+      "id": "507acc8b-0929-4886-9ba1-5659aa52bd5e",
+      "name": "Parent Run Exists?"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ `AUDIT_RUN_NOT_FOUND: run \"${$('Validate APPEND_EVENT').item.json.event.run_id}\" does not exist` }}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        32
+      ],
+      "id": "566bc159-b0f9-4750-9d0f-b24b6ea5b474",
+      "name": "Reject Orphan Event"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM",
+          "mode": "list",
+          "cachedResultName": "TEST_Automation_Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1525396047,
+          "mode": "list",
+          "cachedResultName": "automation_events",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit#gid=1525396047"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "event_id",
+              "lookupValue": "={{ `AUDIT_RUN_NOT_FOUND: run \"${$('Validate APPEND_EVENT').item.json.event.run_id}\" does not exist` }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1392,
+        -112
+      ],
+      "id": "edf46f2c-3b6f-4ac2-891b-c591f434102e",
+      "name": "Find Existing Event",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LV8YgQHda89gL6UB",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cd072bdb-8b54-4967-89d9-0da04169a365",
+              "leftValue": "={{$json.event_id}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1600,
+        -112
+      ],
+      "id": "666d47b2-c0e5-4ba1-98e5-e2ae36837be6",
+      "name": "Event Already Exists?"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ `AUDIT_EVENT_CONFLICT: event \"${$('Validate APPEND_EVENT').item.json.event.event_id}\" already exists` }}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1824,
+        -128
+      ],
+      "id": "970b9ea0-dec0-466a-bd02-6aefe08f08c0",
+      "name": "Reject Duplicate Event"
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $('Validate APPEND_EVENT').item.json.event;\nconst resource = event.resource;\n\nreturn {\n  json: {\n    event_id: event.event_id,\n    run_id: event.run_id,\n    correlation_id: event.correlation_id,\n    occurred_at: event.occurred_at,\n    step: event.step,\n    service: event.service,\n    action: event.action,\n    status: event.status,\n\n    resource_type: resource?.type ?? '',\n    resource_id: resource?.id ?? '',\n    resource_url: resource?.url ?? '',\n\n    duration_ms: event.duration_ms ?? '',\n    message: event.message,\n    metadata_json: JSON.stringify(event.metadata),\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        32
+      ],
+      "id": "87150303-5bc6-416f-b4b2-23951641c3c6",
+      "name": "Map Event Row"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM",
+          "mode": "list",
+          "cachedResultName": "TEST_Automation_Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1525396047,
+          "mode": "list",
+          "cachedResultName": "automation_events",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit#gid=1525396047"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "event_id",
+              "displayName": "event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "run_id",
+              "displayName": "run_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "step",
+              "displayName": "step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "service",
+              "displayName": "service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resource_type",
+              "displayName": "resource_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resource_id",
+              "displayName": "resource_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resource_url",
+              "displayName": "resource_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2032,
+        32
+      ],
+      "id": "17afeb34-b85c-49c1-9d5a-761abf0be223",
+      "name": "Append Event",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LV8YgQHda89gL6UB",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $('Validate APPEND_EVENT').item.json.event;\n\nreturn {\n  json: {\n    success: true,\n    operation: 'APPEND_EVENT',\n    data: {\n      event_id: event.event_id,\n      run_id: event.run_id,\n      status: event.status,\n      persisted_at: $now.toISO(),\n      storage: 'GOOGLE_SHEETS',\n    },\n    error: null,\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        32
+      ],
+      "id": "c777ddfe-5b10-4024-a3d0-83648a09de2a",
+      "name": "Return APPEND_EVENT Result"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const payload = $json.payload;\n\nif (!payload || typeof payload !== 'object' || Array.isArray(payload)) {\n  throw new Error('AUDIT_UPDATE_RUN_INVALID: payload is required');\n}\n\nconst runId = payload.run_id;\nconst patch = payload.patch;\n\nif (typeof runId !== 'string' || runId.trim() === '') {\n  throw new Error('AUDIT_UPDATE_RUN_INVALID: run_id is required');\n}\n\nif (!patch || typeof patch !== 'object' || Array.isArray(patch)) {\n  throw new Error('AUDIT_UPDATE_RUN_INVALID: patch must be an object');\n}\n\nconst allowedFields = new Set([\n  'status',\n  'last_completed_step',\n  'finished_at',\n  'failed_step',\n  'error_type',\n  'error_code',\n  'error_summary',\n  'retry_count',\n  'execution_url',\n]);\n\nconst patchFields = Object.keys(patch);\n\nif (patchFields.length === 0) {\n  throw new Error('AUDIT_UPDATE_RUN_INVALID: patch cannot be empty');\n}\n\nconst unsupportedFields = patchFields.filter(\n  (field) => !allowedFields.has(field)\n);\n\nif (unsupportedFields.length > 0) {\n  throw new Error(\n    `AUDIT_UPDATE_RUN_INVALID: immutable or unsupported fields: ${unsupportedFields.join(', ')}`\n  );\n}\n\nconst allowedStatuses = new Set([\n  'RUNNING',\n  'SUCCESS',\n  'VALIDATION_FAILED',\n  'PARTIAL_FAILURE',\n  'FAILED',\n  'MANUAL_REVIEW_REQUIRED',\n]);\n\nif (\n  patch.status !== undefined &&\n  !allowedStatuses.has(patch.status)\n) {\n  throw new Error(\n    `AUDIT_UPDATE_RUN_INVALID: unsupported status \"${patch.status}\"`\n  );\n}\n\nif (\n  patch.finished_at !== undefined &&\n  patch.finished_at !== null &&\n  Number.isNaN(Date.parse(patch.finished_at))\n) {\n  throw new Error(\n    'AUDIT_UPDATE_RUN_INVALID: finished_at must be null or a valid ISO datetime'\n  );\n}\n\nif (\n  patch.retry_count !== undefined &&\n  (!Number.isInteger(patch.retry_count) || patch.retry_count < 0)\n) {\n  throw new Error(\n    'AUDIT_UPDATE_RUN_INVALID: retry_count must be a non-negative integer'\n  );\n}\n\nreturn {\n  json: {\n    operation: 'UPDATE_RUN',\n    run_id: runId.trim(),\n    patch,\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        160
+      ],
+      "id": "f068f88a-f302-47a8-8da9-872fd03bb009",
+      "name": "Validate UPDATE_RUN"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM",
+          "mode": "list",
+          "cachedResultName": "TEST_Automation_Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "automation_runs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "run_id",
+              "lookupValue": "={{ String($('Validate UPDATE_RUN').item.json.run_id).trim() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        960,
+        160
+      ],
+      "id": "83e65c63-81d1-4232-a70e-62d89e10a0b3",
+      "name": "Find Run to Update",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LV8YgQHda89gL6UB",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "557c79ea-d72c-4ba8-aa5f-0bea72f8b0f7",
+              "leftValue": "={{ $json.run_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1168,
+        160
+      ],
+      "id": "0272dddd-3a8f-4cab-89ff-e10359c5acd2",
+      "name": "Run Exists?"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ `AUDIT_RUN_NOT_FOUND: run \"${$('Validate UPDATE_RUN').item.json.run_id}\" does not exist` }}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        336
+      ],
+      "id": "984d15a1-7c20-4782-8845-9ac464a63e15",
+      "name": "Reject Missing Run"
+    },
+    {
+      "parameters": {
+        "jsCode": "const current = $json;\nconst request = $('Validate UPDATE_RUN').item.json;\nconst patch = request.patch;\n\nif (current.run_id !== request.run_id) {\n  throw new Error('AUDIT_UPDATE_RUN_CONFLICT: retrieved run does not match request');\n}\n\nconst terminalStatuses = new Set([\n  'SUCCESS',\n  'VALIDATION_FAILED',\n  'PARTIAL_FAILURE',\n  'FAILED',\n  'MANUAL_REVIEW_REQUIRED',\n]);\n\nconst currentStatus = current.status;\nconst nextStatus = patch.status ?? currentStatus;\n\n// Завершённый run нельзя переводить в другой статус.\n// Повторный запуск должен создавать новый AutomationRun.\nif (\n  terminalStatuses.has(currentStatus) &&\n  nextStatus !== currentStatus\n) {\n  throw new Error(\n    `AUDIT_UPDATE_RUN_INVALID_TRANSITION: ${currentStatus} → ${nextStatus}`\n  );\n}\n\nconst updated = {\n  ...current,\n  ...patch,\n};\n\nif (nextStatus === 'RUNNING' && updated.finished_at) {\n  throw new Error(\n    'AUDIT_UPDATE_RUN_INVALID: RUNNING run cannot have finished_at'\n  );\n}\n\nif (\n  terminalStatuses.has(nextStatus) &&\n  !updated.finished_at\n) {\n  throw new Error(\n    `AUDIT_UPDATE_RUN_INVALID: ${nextStatus} requires finished_at`\n  );\n}\n\nif (nextStatus === 'SUCCESS') {\n  const errorFields = [\n    updated.failed_step,\n    updated.error_type,\n    updated.error_code,\n    updated.error_summary,\n  ];\n\n  if (errorFields.some((value) => value)) {\n    throw new Error(\n      'AUDIT_UPDATE_RUN_INVALID: SUCCESS run cannot contain failure data'\n    );\n  }\n}\n\nconst failureStatuses = new Set([\n  'VALIDATION_FAILED',\n  'PARTIAL_FAILURE',\n  'FAILED',\n  'MANUAL_REVIEW_REQUIRED',\n]);\n\nif (\n  failureStatuses.has(nextStatus) &&\n  (!updated.failed_step || !updated.error_summary)\n) {\n  throw new Error(\n    `AUDIT_UPDATE_RUN_INVALID: ${nextStatus} requires failed_step and error_summary`\n  );\n}\n\nreturn {\n  json: {\n    run_id: current.run_id,\n    execution_id: current.execution_id,\n    workflow_id: current.workflow_id,\n    workflow_name: current.workflow_name,\n    workflow_version: current.workflow_version,\n    environment: current.environment,\n    correlation_id: current.correlation_id,\n    entity_type: current.entity_type,\n    entity_id: current.entity_id,\n    source_type: current.source_type,\n    source_event_id: current.source_event_id,\n    started_at: current.started_at,\n\n    finished_at: updated.finished_at ?? '',\n    status: nextStatus,\n    last_completed_step: updated.last_completed_step,\n\n    failed_step: updated.failed_step ?? '',\n    error_type: updated.error_type ?? '',\n    error_code: updated.error_code ?? '',\n    error_summary: updated.error_summary ?? '',\n\n    retry_count: Number(updated.retry_count ?? 0),\n    execution_url: updated.execution_url ?? '',\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        176
+      ],
+      "id": "09a66169-858c-44e0-bbf1-abbdf0cc5957",
+      "name": "Apply Run Patch"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM",
+          "mode": "list",
+          "cachedResultName": "TEST_Automation_Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "automation_runs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "run_id"
+          ],
+          "schema": [
+            {
+              "id": "run_id",
+              "displayName": "run_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_version",
+              "displayName": "workflow_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "project_id",
+              "displayName": "project_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source_event_id",
+              "displayName": "source_event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_completed_step",
+              "displayName": "last_completed_step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "failed_step",
+              "displayName": "failed_step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_type",
+              "displayName": "error_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_summary",
+              "displayName": "error_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "retry_count",
+              "displayName": "retry_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_url",
+              "displayName": "execution_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_id",
+              "displayName": "workflow_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "correlation_id",
+              "displayName": "correlation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "entity_type",
+              "displayName": "entity_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "entity_id",
+              "displayName": "entity_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source_type",
+              "displayName": "source_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_code",
+              "displayName": "error_code",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "handlingExtraData": "error"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1584,
+        176
+      ],
+      "id": "bdb98218-0576-41b2-aeeb-ab3eded79427",
+      "name": "Update Run Row",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LV8YgQHda89gL6UB",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const updated = $('Apply Run Patch').item.json;\n\nreturn {\n  json: {\n    success: true,\n    operation: 'UPDATE_RUN',\n    data: {\n      run_id: updated.run_id,\n      status: updated.status,\n      updated_at: $now.toISO(),\n      storage: 'GOOGLE_SHEETS',\n    },\n    error: null,\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        208
+      ],
+      "id": "65195cb3-ef5f-4534-8971-489c59bd7d87",
+      "name": "Return UPDATE_RUN Result"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Audit Request": {
+      "main": [
+        [
+          {
+            "node": "Route Audit Operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Validate Audit Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Audit Operation": {
+      "main": [
+        [
+          {
+            "node": "Validate CREATE_RUN",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate APPEND_EVENT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate UPDATE_RUN",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Unrouted Operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate CREATE_RUN": {
+      "main": [
+        [
+          {
+            "node": "Find Existing Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Existing Run": {
+      "main": [
+        [
+          {
+            "node": "Run Already Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Already Exists?": {
+      "main": [
+        [
+          {
+            "node": "Reject Duplicate Run",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Map Run Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Run Row": {
+      "main": [
+        [
+          {
+            "node": "Append Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Run": {
+      "main": [
+        [
+          {
+            "node": "Return CREATE_RUN Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate APPEND_EVENT": {
+      "main": [
+        [
+          {
+            "node": "Find Parent Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Parent Run": {
+      "main": [
+        [
+          {
+            "node": "Parent Run Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parent Run Exists?": {
+      "main": [
+        [
+          {
+            "node": "Find Existing Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Orphan Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Existing Event": {
+      "main": [
+        [
+          {
+            "node": "Event Already Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Event Already Exists?": {
+      "main": [
+        [
+          {
+            "node": "Reject Duplicate Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Map Event Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Event Row": {
+      "main": [
+        [
+          {
+            "node": "Append Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Event": {
+      "main": [
+        [
+          {
+            "node": "Return APPEND_EVENT Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate UPDATE_RUN": {
+      "main": [
+        [
+          {
+            "node": "Find Run to Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Run to Update": {
+      "main": [
+        [
+          {
+            "node": "Run Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Exists?": {
+      "main": [
+        [
+          {
+            "node": "Apply Run Patch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Missing Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Run Patch": {
+      "main": [
+        [
+          {
+            "node": "Update Run Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Run Row": {
+      "main": [
+        [
+          {
+            "node": "Return UPDATE_RUN Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "768fa591-2680-4360-9066-23639aa7b133",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3ceb589bad47c552dc5f920f0a41395dfd8beb13ed2d06dbe2f26e54324f15ac"
+  },
+  "nodeGroups": [],
+  "id": "4NRogpB1edsWOK0B",
+  "tags": []
+}

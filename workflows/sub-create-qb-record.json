@@ -1,0 +1,204 @@
+{
+  "name": "SUB - Create QB Record",
+  "nodes": [
+    {
+      "id": "sn-1",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        80
+      ],
+      "parameters": {
+        "content": "## SUB - Create QB Record\nInput:  { state, workspace }\nOutput: { state, workspace, qb: { customer_id, project_id, estimate_id, estimate_number } }\n\nCreates Customer, Project, and Estimate in QuickBooks.\nReturns all incoming data plus qb results.",
+        "height": 160,
+        "width": 900,
+        "color": 7
+      }
+    },
+    {
+      "id": "n01",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"state\": {},\n  \"workspace\": {}\n}"
+      }
+    },
+    {
+      "id": "n02",
+      "name": "HTTP: QB - Create Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        280,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://quickbooks.api.intuit.com/v3/company/REPLACE_COMPANY_ID/customer",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "quickBooksOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"GivenName\": \"{{ $json.state.client_name.split(' ')[0] }}\", \"FamilyName\": \"{{ $json.state.client_name.split(' ').slice(1).join(' ') }}\", \"PrimaryEmailAddr\": { \"Address\": \"{{ $json.state.client_email }}\" }, \"PrimaryPhone\": { \"FreeFormNumber\": \"{{ $json.state.client_phone }}\" }, \"BillAddr\": { \"Line1\": \"{{ $json.state.client_address.split(',')[0].trim() }}\", \"City\": \"{{ $json.state.client_address.split(',')[1]?.trim() }}\", \"CountrySubDivisionCode\": \"UT\", \"PostalCode\": \"{{ ($json.state.client_address.match(/\\d{5}/) || [])[0] }}\", \"Country\": \"US\" } }",
+        "options": {}
+      },
+      "credentials": {
+        "quickBooksOAuth2Api": {
+          "id": "REPLACE_QB_CRED",
+          "name": "QuickBooks OAuth2"
+        }
+      }
+    },
+    {
+      "id": "n03",
+      "name": "HTTP: QB - Create Project",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://quickbooks.api.intuit.com/v3/company/REPLACE_COMPANY_ID/job",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "quickBooksOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"Name\": \"{{ $('When Called by Another Workflow').first().json.state.client_name + ' - ' + $('When Called by Another Workflow').first().json.state.project_type }}\", \"CustomerRef\": { \"value\": \"{{ $json.Customer.Id }}\" }, \"StartDate\": \"{{ $('When Called by Another Workflow').first().json.state.received_at.substring(0,10) }}\", \"ProjectStatus\": \"IN_PROGRESS\" }",
+        "options": {}
+      },
+      "credentials": {
+        "quickBooksOAuth2Api": {
+          "id": "REPLACE_QB_CRED",
+          "name": "QuickBooks OAuth2"
+        }
+      }
+    },
+    {
+      "id": "n04",
+      "name": "HTTP: QB - Create Estimate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        840,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://quickbooks.api.intuit.com/v3/company/REPLACE_COMPANY_ID/estimate",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "quickBooksOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"CustomerRef\": { \"value\": \"{{ $('HTTP: QB - Create Customer').first().json.Customer.Id }}\" }, \"TxnDate\": \"{{ $('When Called by Another Workflow').first().json.state.received_at.substring(0,10) }}\", \"Line\": {{ JSON.stringify( $('When Called by Another Workflow').first().json.state.milestones.map((m, i) => ({ LineNum: i+1, DetailType: 'SalesItemLineDetail', Description: m.name, Amount: m.amount, SalesItemLineDetail: { Qty: 1, UnitPrice: m.amount } })) ) }} }",
+        "options": {}
+      },
+      "credentials": {
+        "quickBooksOAuth2Api": {
+          "id": "REPLACE_QB_CRED",
+          "name": "QuickBooks OAuth2"
+        }
+      }
+    },
+    {
+      "id": "n05",
+      "name": "Set: Return Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r0",
+              "name": "state",
+              "type": "object",
+              "value": "={{ $('When Called by Another Workflow').first().json.state }}"
+            },
+            {
+              "id": "r1",
+              "name": "workspace",
+              "type": "object",
+              "value": "={{ $('When Called by Another Workflow').first().json.workspace }}"
+            },
+            {
+              "id": "r2",
+              "name": "qb",
+              "type": "object",
+              "value": "={{ {\n  customer_id:     $('HTTP: QB - Create Customer').first().json.Customer.Id,\n  project_id:      $('HTTP: QB - Create Project').first().json.Job?.Id ?? $('HTTP: QB - Create Customer').first().json.Customer.Id,\n  estimate_id:     $json.Estimate.Id,\n  estimate_number: $json.Estimate.DocNumber\n} }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "HTTP: QB - Create Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: QB - Create Customer": {
+      "main": [
+        [
+          {
+            "node": "HTTP: QB - Create Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: QB - Create Project": {
+      "main": [
+        [
+          {
+            "node": "HTTP: QB - Create Estimate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: QB - Create Estimate": {
+      "main": [
+        [
+          {
+            "node": "Set: Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "REPLACE_ERROR_HANDLER_ID"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

@@ -1,0 +1,1074 @@
+{
+  "name": "MAIN - New Project Onboarding",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Slack Intake",
+        "height": 300,
+        "width": 900,
+        "color": 4
+      },
+      "id": "f5744f7c-1b31-45c6-8a89-a1acab54a75a",
+      "name": "Trigger and Extract",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Validate and Deduplicate\nFail-fast before any side effects.\nSkip if source_event_id already exists in automation_runs.",
+        "height": 620,
+        "width": 1020,
+        "color": 5
+      },
+      "id": "dc84305d-458c-4220-b1d3-1257d46d6c60",
+      "name": "Validate and Deduplicate",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Orchestrate\nOpens audit run → executes sub-workflows in order → runs inline steps → closes audit run.\nSub-workflows receive accumulated state and return it plus their results.\nAudit calls both go to SYS - Audit Service: CREATE_RUN at start, UPDATE_RUN at end.",
+        "height": 796,
+        "width": 1324,
+        "color": 3
+      },
+      "id": "d5c3565a-b666-4ecd-95f7-8b84d83165a6",
+      "name": "Orchestrate",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2224,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "trigger": [
+          "file_share"
+        ],
+        "channelId": {
+          "__rl": true,
+          "value": "C0BC0E9K6UA",
+          "mode": "list",
+          "cachedResultName": "new-projects-soulbuilders-test"
+        },
+        "downloadFiles": true,
+        "options": {}
+      },
+      "id": "b275bc6d-234b-4268-84a2-f5978a5e7c94",
+      "name": "Slack: File Shared",
+      "type": "n8n-nodes-base.slackTrigger",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        208
+      ],
+      "webhookId": "0a3c5605-cdaa-4bd5-9410-4a22fc8d7a8e",
+      "credentials": {
+        "slackApi": {
+          "id": "KZvZ6UveVwF3lEvB",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.state.client_name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.state.project_type }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.state.milestones.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "c4",
+              "leftValue": "={{ $json.state.client_email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3194f83e-cf87-4f9d-b20f-e948aeae4685",
+      "name": "IF: Validate Required Fields",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "=Validation failed for event {{ $json.state.event_id }}. Missing required fields."
+      },
+      "id": "2d2472a3-ebdf-48b9-bd4a-3132838cceab",
+      "name": "Stop: Validation Failed",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM",
+          "mode": "list",
+          "cachedResultName": "TEST_Automation_Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "automation_runs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13GbBGmdcx3a5vKLHLVgRDLu0Ezpt6lMVAxUbxUeY-xM/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "source_event_id",
+              "lookupValue": "={{ $json.state.event_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4bc24844-53f2-47aa-b747-fb59ac0f36ba",
+      "name": "GSheets: Find Run by Event",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1440,
+        256
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "yPoQYU8gjjykRbxg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ Object.keys($json).length > 0 && !!$json.run_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "=",
+        "options": {}
+      },
+      "id": "82c271bc-a9e7-45b2-bfc8-7f622e6acad5",
+      "name": "IF: Is Duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1696,
+        256
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "93bf5b43-6316-4fdf-9554-987a90adf356",
+      "name": "No Operation: Skip - Already Processed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1696,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "4NRogpB1edsWOK0B",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/4NRogpB1edsWOK0B"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "d68cc08a-bf41-4c2b-9db8-43f0745eda87",
+      "name": "Execute: SYS - Audit Service (CREATE_RUN)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        2576,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "JuWnIuvJdDFsTVMU",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/JuWnIuvJdDFsTVMU"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "d145f30c-46f9-48ad-aa62-c07eb2290989",
+      "name": "Execute: SUB - Create Project Workspace",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        2592,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "hgMwstVSi9ocPPkS",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/hgMwstVSi9ocPPkS"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "a6afb28f-dc8e-41bb-a6bf-efb0b1191a19",
+      "name": "Execute: SUB - Create QB Record",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        2832,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "7Fc2L2F0VGA29vb3",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/7Fc2L2F0VGA29vb3"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "b5895b56-eafb-40b5-8061-7ed2ad7edd0f",
+      "name": "Execute: SUB - Create Finish Material Sheet",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        3088,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"raw\": \"{{ Buffer.from('To: ' + $json.state.client_email + '\\nSubject: Your ' + $json.state.project_type + ' Project Has Started\\nContent-Type: text/plain; charset=utf-8\\n\\nHi ' + $json.state.client_name.split(' ')[0] + ',\\n\\nThank you for signing your contract. Your project is officially underway!\\n\\nYour project manager will be in touch shortly.\\n\\nWarm regards,\\nThe Team').toString('base64url') }}\" }",
+        "options": {}
+      },
+      "id": "eac11e8f-0762-4653-be3d-82e3a37b3987",
+      "name": "HTTP: Gmail - Send Welcome Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2320,
+        528
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "iZrOvxHMxkWGgbaR",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://quickbooks.api.intuit.com/v3/company/cd404da9-11a0-4419-ae00-6ae65b1b83c7/invoice",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "quickBooksOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"CustomerRef\": { \"value\": \"{{ $('Execute: SUB - Create Finish Material Sheet').first().json.qb.customer_id }}\" }, \"TxnDate\": \"{{ $('Execute: SUB - Create Finish Material Sheet').first().json.state.received_at.substring(0,10) }}\", \"DueDate\": \"{{ $('Execute: SUB - Create Finish Material Sheet').first().json.state.received_at.substring(0,10) }}\", \"EmailStatus\": \"NeedToSend\", \"BillEmail\": { \"Address\": \"{{ $('Execute: SUB - Create Finish Material Sheet').first().json.state.client_email }}\" }, \"Line\": [{ \"LineNum\": 1, \"DetailType\": \"SalesItemLineDetail\", \"Description\": \"{{ $('Execute: SUB - Create Finish Material Sheet').first().json.state.deposit_milestone }}\", \"Amount\": {{ $('Execute: SUB - Create Finish Material Sheet').first().json.state.deposit_amount }}, \"SalesItemLineDetail\": { \"Qty\": 1, \"UnitPrice\": {{ $('Execute: SUB - Create Finish Material Sheet').first().json.state.deposit_amount }} } }] }",
+        "options": {}
+      },
+      "id": "23ac91d0-a6be-44e9-a8fa-96148cbe20d2",
+      "name": "HTTP: QB - Send Deposit Invoice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2544,
+        528
+      ],
+      "credentials": {
+        "quickBooksOAuth2Api": {
+          "id": "6uucfoUZGMgLTutu",
+          "name": "QuickBooks Online account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/1TDLFUowBxNV5DJWuoOi43esNPhflqsWI/values/Dashboard!A:G:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"values\": [[ \"{{ $('Execute: SUB - Create Finish Material Sheet').first().json.state.client_name }}\", \"{{ $('Execute: SUB - Create Finish Material Sheet').first().json.state.project_type }}\", \"{{ $('Execute: SUB - Create Finish Material Sheet').first().json.state.client_address.split(',')[1]?.trim() }}\", \"{{ $('Execute: SUB - Create Finish Material Sheet').first().json.qb.estimate_number }}\", true, \"Onboarding\", {{ $('Execute: SUB - Create Finish Material Sheet').first().json.state.total_contract_value }} ]] }",
+        "options": {}
+      },
+      "id": "244ab0ec-8f14-408c-9bd6-98ba6a14111a",
+      "name": "HTTP: Sheets - Update PM Sheet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2768,
+        528
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "VOBG1titzDSgSNb0",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "4NRogpB1edsWOK0B",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/4NRogpB1edsWOK0B"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "03cdf3df-2f08-4efe-911f-755c5a2a24a7",
+      "name": "Execute: SYS - Audit Service (UPDATE_RUN)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        3040,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "event_id",
+              "type": "string",
+              "value": "={{ $('Execute: SUB - Create Finish Material Sheet').first().json.state.event_id }}"
+            },
+            {
+              "id": "r2",
+              "name": "status",
+              "type": "string",
+              "value": "SUCCESS"
+            },
+            {
+              "id": "r3",
+              "name": "results",
+              "type": "object",
+              "value": "={{ {\n  event_id: $('Execute: SUB - Create Finish Material Sheet').first().json.state.event_id,\n  run_id: $('Execute: SUB - Create Finish Material Sheet').first().json.state.run_id,\n  status: 'SUCCESS',\n  results: {\n    google_folder:         { created: true, id: $('Execute: SUB - Create Finish Material Sheet').first().json.workspace.folder_id },\n    contract_upload:       { uploaded: true, id: $('Execute: SUB - Create Finish Material Sheet').first().json.workspace.upload_id },\n    quickbooks_customer:   { created: true, id: $('Execute: SUB - Create Finish Material Sheet').first().json.qb.customer_id },\n    quickbooks_estimate:   { created: true, id: $('Execute: SUB - Create Finish Material Sheet').first().json.qb.estimate_id, number: $('Execute: SUB - Create Finish Material Sheet').first().json.qb.estimate_number, line_items: $('Execute: SUB - Create Finish Material Sheet').first().json.state.milestones.length },\n    finish_material_sheet: { created: true, id: $('Execute: SUB - Create Finish Material Sheet').first().json.fm.sheet_id },\n    welcome_email:         { sent: true, id: $('HTTP: Gmail - Send Welcome Email').first().json.id },\n    pm_sheet:              { updated: true, range: $('HTTP: Sheets - Update PM Sheet').first().json.updatedRange },\n    deposit_invoice:       { sent: true, id: $('HTTP: QB - Send Deposit Invoice').first().json.Invoice.Id, amount: $('Execute: SUB - Create Finish Material Sheet').first().json.state.deposit_amount }\n  },\n  errors: []\n} }}"
+            },
+            {
+              "id": "r4",
+              "name": "errors",
+              "type": "array",
+              "value": "=[]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "69b01e83-ea72-4277-8f95-86c7d295b478",
+      "name": "Set: Build Final Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3280,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        624,
+        208
+      ],
+      "id": "0db70597-b827-43aa-8982-012e2a064e11",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.slack_file_url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "slackApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        480,
+        208
+      ],
+      "id": "dc46de41-3f7f-4d83-b699-8b89414cc049",
+      "name": "Download File",
+      "credentials": {
+        "slackApi": {
+          "id": "KZvZ6UveVwF3lEvB",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        272,
+        208
+      ],
+      "id": "85853866-1a71-4788-a4f4-e4c5b49c8a1a",
+      "name": "Merge: Event + File Metadata"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        560,
+        512
+      ],
+      "id": "07da578b-846b-4234-a7c7-fef7b91dd536",
+      "name": "Merge: PDF Text + Metadata"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.text ?? '';\n\nconst lines = text\n  .split(/\\r?\\n/)\n  .map(l => l.trim())\n  .filter(l => l.length > 0);\n\n// ── helpers ───────────────────────────────────────────────────────────────────\nconst KNOWN_UNITS = /^(Set|Each|Sq\\.?\\s*Ft\\.?|Gallon|Gallons|Linear\\s*Ft|LF|SF|SY|Pair|Roll|Box|Bag|Sheet)$/i;\nconst IS_DECIMAL  = /^\\d+\\.?\\d*$/;\nconst IS_PRICE    = /^\\$[\\d,]+(?:\\.\\d{1,2})?$/;\nconst IS_DATE     = /^(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\\s+\\d{1,2},?\\s+\\d{4}$/i;\nconst IS_PAGE     = /^Page\\s+\\d+\\s+of\\s+\\d+$/i;\nconst IS_EMAIL    = /[\\w.+\\-]+@[\\w.\\-]+\\.[a-z]{2,}/i;\nconst MS_END      = /^(?:TERMS|Agreed|PLEASE\\s+FEEL|Page\\s+\\d)/i;\n\nconst toNum = s => parseFloat(s.replace(/[$,]/g, ''));\n\n// ── client info ───────────────────────────────────────────────────────────────\nconst dateIdx = lines.findIndex(l => IS_DATE.test(l));\nif (dateIdx < 0) throw new Error('Could not find date line — PDF structure unrecognized.');\n\nconst clientName    = lines[dateIdx + 1] ?? null;\nconst clientAddress = lines[dateIdx + 2] ?? null;\nconst clientPhone   = lines[dateIdx + 3] ?? null;\nconst clientEmail   = (lines[dateIdx + 4] ?? '').match(IS_EMAIL)?.[0] ?? null;\n\n// ── project type ──────────────────────────────────────────────────────────────\nconst emailLineIdx = dateIdx + 4;\n\nlet projectType = null;\n{\n  const headerLine = lines[emailLineIdx + 1] ?? '';\n  const parts      = headerLine.split(' - ');\n  if (parts.length >= 3) {\n    let pt = parts[parts.length - 1].trim();\n    if (!pt.includes(' ')) {\n      const nextLine = lines[emailLineIdx + 2] ?? '';\n      if (!nextLine.includes(' - ')) pt = (pt + ' ' + nextLine).trim();\n    }\n    projectType = pt || null;\n  }\n}\n\n// ── milestones ────────────────────────────────────────────────────────────────\nconst normalize = s => String(s ?? '').replace(/\\s+/g, ' ').trim();\n\nconst msHeaderIdx = lines.findIndex(l => {\n  const x = normalize(l);\n  return /^Payment Milestones?$/i.test(x) || /^Milestones?$/i.test(x) || /^Milestone$/i.test(x);\n});\n\nconst msAmountIdx = lines.findIndex((l, i) => {\n  if (i <= msHeaderIdx) return false;\n  const x = normalize(l);\n  return /^Amount$/i.test(x) || /\\bAmount\\b/i.test(x);\n});\n\nif (msHeaderIdx < 0 || msAmountIdx < 0) {\n  throw new Error(\n    'Could not find Payment Milestones table. Nearby lines: ' +\n    lines\n      .map((line, i) => `${i}: ${line}`)\n      .filter(row => /milestone|payment|amount|total/i.test(row))\n      .slice(0, 30)\n      .join(' | ')\n  );\n}\n\nconst msEndIdx = lines.findIndex((l, i) => i > msAmountIdx && MS_END.test(l));\nconst afterAmt = lines.slice(msAmountIdx + 1, msEndIdx >= 0 ? msEndIdx : undefined);\n\nconst msNamesLeft = lines.slice(msHeaderIdx + 1, msAmountIdx)\n  .filter(l => {\n    const x = normalize(l);\n    return !/^Payment Milestones?$/i.test(x)\n      && !/^Milestones?$/i.test(x)\n      && !/^Milestone$/i.test(x)\n      && !/^Amount$/i.test(x)\n      && !/^Total$/i.test(x)\n      && !/^Note:/i.test(x)\n      && !IS_PAGE.test(x);\n  });\n\nconst msNamesRight = afterAmt\n  .filter(l => {\n    const x = normalize(l);\n    return !IS_PRICE.test(x)\n      && !IS_PAGE.test(x)\n      && !IS_DECIMAL.test(x)\n      && !/^Total$/i.test(x)\n      && !/^Note:/i.test(x);\n  });\n\nconst rawMilestoneRows = [...msNamesLeft, ...msNamesRight];\n\nconst milestones = rawMilestoneRows\n  .map(row => {\n    const line = normalize(row);\n    const priceMatch = line.match(/\\$[\\d,]+(?:\\.\\d{1,2})?/);\n\n    if (!priceMatch) {\n      return {\n        name: line,\n        amount: 0,\n      };\n    }\n\n    return {\n      name: line.replace(priceMatch[0], '').trim(),\n      amount: toNum(priceMatch[0]),\n    };\n  })\n  .filter(m => m.name && !/^Amount$/i.test(m.name));\n\nif (milestones.length === 0) throw new Error('Milestones table parsed 0 rows.');\n\n// ── finish materials ──────────────────────────────────────────────────────────\nconst materials = [];\nlet suppliedBy = '';\n\nconst fmStartIdx = lines.findIndex(l => {\n  const x = normalize(l);\n  return /finish material|material estimation|materials/i.test(x)\n    && !/payment|milestone/i.test(x);\n});\n\nconst fmEndIdx = lines.findIndex((l, i) => {\n  if (i <= fmStartIdx) return false;\n  return /payment milestones?|milestones?/i.test(normalize(l));\n});\n\nif (fmStartIdx >= 0) {\n  const rawFmLines = lines\n    .slice(fmStartIdx + 1, fmEndIdx >= 0 ? fmEndIdx : undefined)\n    .map(normalize)\n    .filter(Boolean);\n\n  const suppliedByLine = rawFmLines.find(l =>\n    /^PROVIDE BY CLIENT$/i.test(l) || /^PROVIDED BY CLIENT$/i.test(l)\n  );\n\n  if (suppliedByLine) {\n    suppliedBy = 'By Client';\n  }\n\nconst projectTypeLower = normalize(projectType).toLowerCase();\n\nconst fmLines = rawFmLines\n  .filter(l =>\n    l\n    && normalize(l).toLowerCase() !== projectTypeLower\n    && !/^Material$/i.test(l)\n    && !/^Measure$/i.test(l)\n    && !/^(Qty|Quantity)$/i.test(l)\n    && !/^Unit Price$/i.test(l)\n    && !/^Approx\\.?\\s*Cost$/i.test(l)\n    && !/^Approx\\s*Total/i.test(l)\n    && !/^PROVIDE BY CLIENT$/i.test(l)\n    && !/^PROVIDED BY CLIENT$/i.test(l)\n    && !/^Page\\s+\\d+\\s+of\\s+\\d+$/i.test(l)\n    && !/^Finish Materials?/i.test(l)\n    && !/^Material\\s+Measure\\s+(Qty|Quantity)\\s+Unit Price\\s+Approx/i.test(l)\n  );\n\n  const unitPattern = '(Set|Each|Sq\\\\.?\\\\s*Ft\\\\.?|Gallon|Gallons|Linear\\\\s*Ft|LF|SF|SY|Pair|Roll|Box|Bag|Sheet)';\n  const rowPattern = new RegExp(\n    `^(.+?)\\\\s+${unitPattern}\\\\s+(\\\\d+(?:\\\\.\\\\d+)?)\\\\s+(\\\\$[\\\\d,]+(?:\\\\.\\\\d{1,2})?)\\\\s+(\\\\$[\\\\d,]+(?:\\\\.\\\\d{1,2})?)$`,\n    'i'\n  );\n\n  let pending = '';\n\n  for (const line of fmLines) {\n    const candidate = pending ? `${pending} ${line}` : line;\n    const match = candidate.match(rowPattern);\n\n    if (match) {\n      materials.push({\n        material:    match[1].trim(),\n        measure:     match[2].trim(),\n        supplied_by: suppliedBy || 'By Client',\n        qty:         Number(match[3]),\n        unit_price:  toNum(match[4]),\n        approx_cost: toNum(match[5]),\n      });\n      pending = '';\n    } else {\n      pending = candidate;\n    }\n  }\n}\n\n// ── validation ────────────────────────────────────────────────────────────────\nif (!clientName)             throw new Error('client_name not found.');\nif (!clientEmail)            throw new Error('client_email not found.');\nif (!projectType)            throw new Error('project_type not found.');\nif (milestones.length === 0) throw new Error('No milestones parsed.');\n\n// ── output ────────────────────────────────────────────────────────────────────\nreturn [{\n  json: {\n    slack_event_id:   $json.slack_event_id ?? '',\n    slack_channel_id: $json.slack_channel_id ?? '',\n    slack_file_id:    $json.slack_file_id ?? '',\n    slack_file_url:   $json.slack_file_url ?? '',\n    slack_file_name:  $json.slack_file_name ?? '',\n    received_at:      $now.toISO(),\n\n    client_name:      clientName,\n    client_email:     clientEmail,\n    client_phone:     clientPhone,\n    client_address:   clientAddress,\n    project_type:     projectType,\n    milestones,\n    finish_materials: materials,\n  },\n}];"
+      },
+      "id": "47672248-29eb-4bad-97ec-79ad79a0af61",
+      "name": "Parse Contract Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "state",
+              "type": "object",
+              "value": "={{ {\n  run_id:               'RUN-' + $json.slack_event_id,\n  event_id:             $json.slack_event_id,\n  received_at:          $json.received_at,\n  slack_file_url:       $json.slack_file_url,\n  slack_file_name:      $json.slack_file_name,\n  client_name:          $json.client_name,\n  client_email:         $json.client_email,\n  client_phone:         $json.client_phone,\n  client_address:       $json.client_address,\n  project_type:         $json.project_type,\n  milestones:           $json.milestones,\n  finish_materials:     $json.finish_materials,\n  folder_name:          $json.client_name + ' | ' + $json.client_address + ' | ' + $json.project_type,\n  contract_pdf_name:    $json.client_name + ' - ' + $json.project_type + ' - Contract',\n  fm_sheet_name:        $json.client_name + ' - ' + $json.project_type + ' - Finish Material List',\n  total_contract_value: $json.milestones.reduce((sum, m) => sum + m.amount, 0),\n  deposit_amount:       $json.milestones[0].amount,\n  deposit_milestone:    $json.milestones[0].name\n} }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6b0487d9-f4dd-4ca3-a999-8dbf49868b5f",
+      "name": "Build Workflow State",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        912,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## PDF Text Extraction",
+        "height": 256,
+        "width": 336
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        432,
+        112
+      ],
+      "id": "83de6c7e-15cf-49b3-b470-9430b347cac2",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Contract Parser",
+        "height": 288,
+        "width": 528,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        528,
+        416
+      ],
+      "id": "83b8f1bf-07cf-495c-b423-b7f12941283a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "url": "https://slack.com/api/files.info",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "slackApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "=file",
+              "value": "={{ $json.slack_file_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -80,
+        208
+      ],
+      "id": "1ee10836-3ea8-442c-8ebe-05dc77b3ff5d",
+      "name": "Get Slack File Info",
+      "credentials": {
+        "slackApi": {
+          "id": "KZvZ6UveVwF3lEvB",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c242254a-c27f-4be9-bff7-9148f3cab3a7",
+              "name": "slack_file_url",
+              "value": "={{ $json.file.url_private_download || $json.file.url_private }}",
+              "type": "string"
+            },
+            {
+              "id": "6c08de48-cd50-4989-8e11-c804da2acf44",
+              "name": "slack_file_name",
+              "value": "={{ $json.file.name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        96,
+        208
+      ],
+      "id": "e3efb8b1-0138-4e05-8ab8-51ad11d606f0",
+      "name": "Normalize File Metadata"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4529ed53-8fb2-462b-8084-469b799d9c95",
+              "name": "slack_event_id",
+              "value": "={{ $json.event_ts }}",
+              "type": "string"
+            },
+            {
+              "id": "ad9eb09a-e41b-444d-9f96-226db62f8793",
+              "name": "slack_channel_id",
+              "value": "={{ $json.channel_id }}",
+              "type": "string"
+            },
+            {
+              "id": "bb3ffc2a-a097-47dc-afa3-e1bff8b1dd72",
+              "name": "slack_file_id",
+              "value": "={{ $json.file_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -272,
+        208
+      ],
+      "id": "1a97f550-a83a-4243-9d0d-ef5f85c7c13b",
+      "name": "Normalize Event Metadata"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1904,
+        256
+      ],
+      "id": "d3ebf5cc-2173-4714-a3ab-f29cc5534eeb",
+      "name": "Restore State After Dedupe"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n  {\n    operation: 'CREATE_RUN',\n    payload: {\n      run: {\n        run_id: $json.state.run_id,\n        execution_id: $execution.id,\n        workflow_id: $workflow.id,\n        workflow_name: $workflow.name,\n        workflow_version: '1.0.0',\n        environment: 'TEST',\n        correlation_id: $json.state.run_id,\n        entity_type: 'project',\n        entity_id: $json.state.client_name + ' - ' + $json.state.project_type,\n        source_type: 'slack',\n        source_event_id: $json.state.event_id,\n        started_at: $json.state.received_at,\n        status: 'RUNNING',\n        last_completed_step: 'PARSED_CONTRACT_DATA',\n        retry_count: 0,\n        execution_url: $json.state.slack_file_url\n      }\n    }\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2320,
+        96
+      ],
+      "id": "85122207-6c38-46fb-865a-c378b0ac3da1",
+      "name": "Build Audit CREATE_RUN Request"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n  {\n    state: $json.state\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2320,
+        256
+      ],
+      "id": "a4a737f9-2538-463f-ae11-ba7757561cc7",
+      "name": "Prepare Workspace Input"
+    }
+  ],
+  "pinData": {
+    "Slack: File Shared": [
+      {
+        "json": {
+          "type": "file_shared",
+          "file_id": "F0BDTAAP99P",
+          "user_id": "U0BCUM6Q38Q",
+          "file": {
+            "id": "F0BDTAAP99P"
+          },
+          "channel_id": "C0BC0E9K6UA",
+          "event_ts": "1782685918.002000"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Slack: File Shared": {
+      "main": [
+        [
+          {
+            "node": "Normalize Event Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Validate Required Fields": {
+      "main": [
+        [
+          {
+            "node": "GSheets: Find Run by Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop: Validation Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GSheets: Find Run by Event": {
+      "main": [
+        [
+          {
+            "node": "IF: Is Duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Is Duplicate?": {
+      "main": [
+        [
+          {
+            "node": "No Operation: Skip - Already Processed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Restore State After Dedupe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute: SYS - Audit Service (CREATE_RUN)": {
+      "main": [
+        []
+      ]
+    },
+    "Execute: SUB - Create Project Workspace": {
+      "main": [
+        [
+          {
+            "node": "Execute: SUB - Create QB Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute: SUB - Create QB Record": {
+      "main": [
+        [
+          {
+            "node": "Execute: SUB - Create Finish Material Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute: SUB - Create Finish Material Sheet": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Gmail - Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Gmail - Send Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "HTTP: QB - Send Deposit Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: QB - Send Deposit Invoice": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Sheets - Update PM Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Sheets - Update PM Sheet": {
+      "main": [
+        [
+          {
+            "node": "Execute: SYS - Audit Service (UPDATE_RUN)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute: SYS - Audit Service (UPDATE_RUN)": {
+      "main": [
+        [
+          {
+            "node": "Set: Build Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Merge: PDF Text + Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge: Event + File Metadata": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge: PDF Text + Metadata",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge: PDF Text + Metadata": {
+      "main": [
+        [
+          {
+            "node": "Parse Contract Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Contract Data": {
+      "main": [
+        [
+          {
+            "node": "Build Workflow State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Workflow State": {
+      "main": [
+        [
+          {
+            "node": "IF: Validate Required Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Restore State After Dedupe",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get Slack File Info": {
+      "main": [
+        [
+          {
+            "node": "Normalize File Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize File Metadata": {
+      "main": [
+        [
+          {
+            "node": "Merge: Event + File Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Event Metadata": {
+      "main": [
+        [
+          {
+            "node": "Get Slack File Info",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge: Event + File Metadata",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Restore State After Dedupe": {
+      "main": [
+        [
+          {
+            "node": "Build Audit CREATE_RUN Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Workspace Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Audit CREATE_RUN Request": {
+      "main": [
+        [
+          {
+            "node": "Execute: SYS - Audit Service (CREATE_RUN)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Workspace Input": {
+      "main": [
+        [
+          {
+            "node": "Execute: SUB - Create Project Workspace",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "418a21d9-da82-40ed-a258-179101858722",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3ceb589bad47c552dc5f920f0a41395dfd8beb13ed2d06dbe2f26e54324f15ac"
+  },
+  "nodeGroups": [],
+  "id": "ika4bVduj2N4vjTb",
+  "tags": []
+}
