@@ -1,0 +1,342 @@
+{
+  "name": "SUB - Create QB Record",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SUB - Create QB Record\nInput:  { state, workspace }\nOutput: { state, workspace, qb: { customer_id, project_id, estimate_id, estimate_number } }\n\nCreates Customer, Project, and Estimate in QuickBooks.\nReturns all incoming data plus qb results.",
+        "height": 448,
+        "width": 1972
+      },
+      "id": "c6365ed1-fdfd-47ae-bad7-490423c32dc0",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"state\": {},\n  \"workspace\": {}\n}"
+      },
+      "id": "64326a6f-1c2d-4104-9d71-4c214409ff20",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        80,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sandbox-quickbooks.api.intuit.com/v3/company/9341457316342084/customer",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "quickBooksOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"GivenName\": \"{{ $json.state.client_name.split(' ')[0] }}\", \"FamilyName\": \"{{ $json.state.client_name.split(' ').slice(1).join(' ') }}\", \"PrimaryEmailAddr\": { \"Address\": \"{{ $json.state.client_email }}\" }, \"PrimaryPhone\": { \"FreeFormNumber\": \"{{ $json.state.client_phone }}\" }, \"BillAddr\": { \"Line1\": \"{{ $json.state.client_address.split(',')[0].trim() }}\", \"City\": \"{{ $json.state.client_address.split(',')[1]?.trim() }}\", \"CountrySubDivisionCode\": \"UT\", \"PostalCode\": \"{{ ($json.state.client_address.match(/\\d{5}/) || [])[0] }}\", \"Country\": \"US\" } }",
+        "options": {}
+      },
+      "id": "d310ad4a-109f-4213-812d-4731cc195e4e",
+      "name": "HTTP: QB - Create Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        224
+      ],
+      "credentials": {
+        "quickBooksOAuth2Api": {
+          "id": "6uucfoUZGMgLTutu",
+          "name": "QuickBooks Online account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sandbox-quickbooks.api.intuit.com/v3/company/9341457316342084/customer",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "quickBooksOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"DisplayName\": \"{{ $json.state.client_name + ' - ' + $json.state.project_type }}\",\n  \"Job\": true,\n  \"ParentRef\": {\n    \"value\": \"{{ $json.Customer.Id }}\"\n  },\n  \"BillWithParent\": true\n}",
+        "options": {}
+      },
+      "id": "bffd1ccc-c2c1-429d-82de-a4e973d68d48",
+      "name": "HTTP: QB - Create Project",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        224
+      ],
+      "credentials": {
+        "quickBooksOAuth2Api": {
+          "id": "6uucfoUZGMgLTutu",
+          "name": "QuickBooks Online account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sandbox-quickbooks.api.intuit.com/v3/company/9341457316342084/estimate",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "quickBooksOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.estimate_body }}",
+        "options": {}
+      },
+      "id": "636bcd83-b3eb-4a54-bf04-f7d63ecf5758",
+      "name": "HTTP: QB - Create Estimate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1392,
+        224
+      ],
+      "credentials": {
+        "quickBooksOAuth2Api": {
+          "id": "6uucfoUZGMgLTutu",
+          "name": "QuickBooks Online account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r0",
+              "name": "state",
+              "type": "object",
+              "value": "={{ $json.state }}"
+            },
+            {
+              "id": "r1",
+              "name": "workspace",
+              "type": "object",
+              "value": "={{ $json.workspace }}"
+            },
+            {
+              "id": "r2",
+              "name": "qb",
+              "type": "object",
+              "value": "={{ {\n  customer_id:     $('HTTP: QB - Create Customer').first().json.Customer.Id,\n  project_id:      $('HTTP: QB - Create Project').first().json.Job?.Id ?? $('HTTP: QB - Create Customer').first().json.Customer.Id,\n  estimate_id:     $json.Estimate.Id,\n  estimate_number: $json.Estimate.DocNumber\n} }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1fcfa75b-5456-4776-a3ac-33019f955688",
+      "name": "Set: Return Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1744,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        576,
+        224
+      ],
+      "id": "b862e1c2-75bc-459d-8496-cc7eb7673d98",
+      "name": "Restore State"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1008,
+        224
+      ],
+      "id": "43259647-762d-45a8-b509-1ea759cabe86",
+      "name": "Restore State2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "36186ed3-4b15-46c5-822b-4bd1956cb17f",
+              "name": "estimate_body",
+              "value": "={{\n  ({\n    CustomerRef: {\n      value: String($json.Customer.Id)\n    },\n    TxnDate: $json.state.received_at.substring(0, 10),\n    Line: $json.state.milestones.map((m, i) => ({\n      LineNum: i + 1,\n      DetailType: 'SalesItemLineDetail',\n      Description: m.name,\n      Amount: Number(m.amount),\n      SalesItemLineDetail: {\n        Qty: 1,\n        UnitPrice: Number(m.amount)\n      }\n    }))\n  })\n}}",
+              "type": "object"
+            },
+            {
+              "id": "a925f603-a738-47ca-b595-6f7d137e34b5",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1200,
+        224
+      ],
+      "id": "f3c99b6f-e7f6-4759-a06c-ed64d84de681",
+      "name": "Build Estimate Body"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1568,
+        224
+      ],
+      "id": "cc0bb573-5ac8-4a47-b438-541335eeec44",
+      "name": "Restore State3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "HTTP: QB - Create Customer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Restore State",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Restore State2",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Restore State3",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "HTTP: QB - Create Customer": {
+      "main": [
+        [
+          {
+            "node": "Restore State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: QB - Create Project": {
+      "main": [
+        [
+          {
+            "node": "Restore State2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: QB - Create Estimate": {
+      "main": [
+        [
+          {
+            "node": "Restore State3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore State": {
+      "main": [
+        [
+          {
+            "node": "HTTP: QB - Create Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore State2": {
+      "main": [
+        [
+          {
+            "node": "Build Estimate Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Estimate Body": {
+      "main": [
+        [
+          {
+            "node": "HTTP: QB - Create Estimate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore State3": {
+      "main": [
+        [
+          {
+            "node": "Set: Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c36ef44c-a196-4ba8-885c-9b1b07604a2b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3ceb589bad47c552dc5f920f0a41395dfd8beb13ed2d06dbe2f26e54324f15ac"
+  },
+  "nodeGroups": [],
+  "id": "hgMwstVSi9ocPPkS",
+  "tags": []
+}
