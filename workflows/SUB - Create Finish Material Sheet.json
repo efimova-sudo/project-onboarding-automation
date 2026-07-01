@@ -1,0 +1,318 @@
+{
+  "name": "SUB - Create Finish Material Sheet",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## SUB - Create Finish Material Sheet\nInput:  { state, workspace, qb }\nOutput: { state, workspace, qb, fm: { sheet_id, sheet_url } }\n\nCreates Google Sheet with header + data rows, moves to Drive subfolder.\nReturns all incoming data plus fm results.",
+        "height": 528,
+        "width": 1412,
+        "color": 6
+      },
+      "id": "73607855-d3a9-4423-9da7-4fb948f91a63",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"state\": {},\n  \"workspace\": {},\n  \"qb\": {}\n}"
+      },
+      "id": "2ed15e30-df4a-42cc-bee2-7b20dbf0edcc",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        80,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.spreadsheet_body }}",
+        "options": {}
+      },
+      "id": "cd7bfee7-1b77-4eaa-805e-7e99332ef7ee",
+      "name": "HTTP: Sheets - Create Spreadsheet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        464,
+        224
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "yPoQYU8gjjykRbxg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://www.googleapis.com/drive/v3/files/{{ $json.spreadsheetId }}?addParents={{ $json.workspace.subfolder_ids.finish_material || $json.workspace.folder_id }}&removeParents=root",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {}
+      },
+      "id": "611bfcd1-a5e6-44c0-a0df-21455555497d",
+      "name": "HTTP: Drive - Move Sheet to Folder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        944,
+        224
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Kpef4qI4tG0y9RL6",
+          "name": "Google Drive OAuth - 2026"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r0",
+              "name": "state",
+              "type": "object",
+              "value": "={{ $json.state }}"
+            },
+            {
+              "id": "r1",
+              "name": "workspace",
+              "type": "object",
+              "value": "={{ $json.workspace }}"
+            },
+            {
+              "id": "r2",
+              "name": "qb",
+              "type": "object",
+              "value": "={{ $json.qb }}"
+            },
+            {
+              "id": "r3",
+              "name": "fm",
+              "type": "object",
+              "value": "={{ {\n  sheet_id:  $('HTTP: Sheets - Create Spreadsheet').first().json.spreadsheetId,\n  sheet_url: $('HTTP: Sheets - Create Spreadsheet').first().json.spreadsheetUrl\n} }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "622e38e3-1eb9-4e26-bbaf-69b5540f5751",
+      "name": "Set: Return Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1296,
+        224
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        400
+      ],
+      "id": "3aef43fc-d2c2-41c5-b8c8-4b9b84627903",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "\n  {\n    \"state\": {\n      \"run_id\": \"RUN-1782685918.002000\",\n      \"event_id\": \"1782685918.002000\",\n      \"received_at\": \"2026-06-29T21:17:09.901-06:00\",\n      \"slack_file_url\": \"https://files.slack.com/files-pri/T0BC28DN8KT-F0BDTAAP99P/download/sample-contract.pdf\",\n      \"slack_file_name\": \"sample-contract.pdf\",\n      \"client_name\": \"Alex Morgan\",\n      \"client_email\": \"alex@example.com\",\n      \"client_phone\": \"+1 (801) 555-0147\",\n      \"client_address\": \"742 Evergreen Terrace, Salt Lake City, UT 84101\",\n      \"project_type\": \"Sunroom Conversion\",\n      \"milestones\": [\n        {\n          \"name\": \"Deposit\",\n          \"amount\": 2000\n        },\n        {\n          \"name\": \"Demolition & Permits Complete\",\n          \"amount\": 5500\n        },\n        {\n          \"name\": \"Framing & Roofing Complete\",\n          \"amount\": 8000\n        },\n        {\n          \"name\": \"Windows & Doors Installed\",\n          \"amount\": 6500\n        },\n        {\n          \"name\": \"Electrical & HVAC Complete\",\n          \"amount\": 4500\n        },\n        {\n          \"name\": \"Flooring & Finishes Complete\",\n          \"amount\": 5500\n        },\n        {\n          \"name\": \"Completion / Final Walkthrough\",\n          \"amount\": 3000\n        },\n        {\n          \"name\": \"Total\",\n          \"amount\": 35000\n        }\n      ],\n      \"finish_materials\": [\n        {\n          \"material\": \"Window package — casement windows (4 windows, vinyl double-pane)\",\n          \"measure\": \"Set\",\n          \"supplied_by\": \"By Client\",\n          \"qty\": 1,\n          \"unit_price\": 2800,\n          \"approx_cost\": 2800\n        },\n        {\n          \"material\": \"Entry door\",\n          \"measure\": \"Each\",\n          \"supplied_by\": \"By Client\",\n          \"qty\": 1,\n          \"unit_price\": 950,\n          \"approx_cost\": 950\n        },\n        {\n          \"material\": \"Tile — sunroom floor (matching tile throughout)\",\n          \"measure\": \"Sq Ft\",\n          \"supplied_by\": \"By Client\",\n          \"qty\": 220,\n          \"unit_price\": 4.5,\n          \"approx_cost\": 990\n        },\n        {\n          \"material\": \"Ceiling fan\",\n          \"measure\": \"Each\",\n          \"supplied_by\": \"By Client\",\n          \"qty\": 1,\n          \"unit_price\": 280,\n          \"approx_cost\": 280\n        },\n        {\n          \"material\": \"Light fixtures (recessed LED)\",\n          \"measure\": \"Each\",\n          \"supplied_by\": \"By Client\",\n          \"qty\": 3,\n          \"unit_price\": 85,\n          \"approx_cost\": 255\n        },\n        {\n          \"material\": \"Interior door hardware set\",\n          \"measure\": \"Set\",\n          \"supplied_by\": \"By Client\",\n          \"qty\": 1,\n          \"unit_price\": 120,\n          \"approx_cost\": 120\n        },\n        {\n          \"material\": \"Paint\",\n          \"measure\": \"Gallon\",\n          \"supplied_by\": \"By Client\",\n          \"qty\": 6,\n          \"unit_price\": 55,\n          \"approx_cost\": 330\n        },\n        {\n          \"material\": \"Tile transition strips\",\n          \"measure\": \"Each\",\n          \"supplied_by\": \"By Client\",\n          \"qty\": 2,\n          \"unit_price\": 35,\n          \"approx_cost\": 70\n        }\n      ],\n      \"folder_name\": \"Alex Morgan | 742 Evergreen Terrace, Salt Lake City, UT 84101 | Sunroom Conversion\",\n      \"contract_pdf_name\": \"Alex Morgan - Sunroom Conversion - Contract\",\n      \"fm_sheet_name\": \"Alex Morgan - Sunroom Conversion - Finish Material List\",\n      \"total_contract_value\": 70000,\n      \"deposit_amount\": 2000,\n      \"deposit_milestone\": \"Deposit\"\n    },\n    \"workspace\": {\n      \"folder_id\": \"1zAjDEEe8sdNYGJfCVVVoHcIOuQEmsi7h\",\n      \"folder_name\": \"Alex Morgan | 742 Evergreen Terrace, Salt Lake City, UT 84101 | Sunroom Conversion\",\n      \"subfolders\": [\n        {\n          \"id\": \"1kN-KF-JLPg58RlyPJWYNO-Ifk1ovAPUy\",\n          \"name\": \"Contract and Change Orders\"\n        }\n      ],\n      \"subfolder_ids\": {\n        \"contracts\": \"1kN-KF-JLPg58RlyPJWYNO-Ifk1ovAPUy\"\n      },\n      \"upload_id\": \"129RQBahLcXCkDLSlnFgpyENISOzXTDsS\"\n    },\n    \"qb\": {\n      \"customer_id\": \"63\",\n      \"project_id\": \"63\",\n      \"estimate_id\": \"146\",\n      \"estimate_number\": \"1002\"\n    }\n  }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        112,
+        400
+      ],
+      "id": "dd7ad69f-a8a9-4045-a5a6-475480d1d6ac",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $json.state ?? $json;\n\nconst materials = Array.isArray(state.finish_materials)\n  ? state.finish_materials\n  : [];\n\nconst headers = [\n  'Material',\n  'Unit',\n  'Supplied By',\n  'Unit Price',\n  'Quantity',\n  'Total Price',\n  'Specs / Model',\n  'Purchase Link',\n  'Ordered?',\n  'Status',\n  'Notes',\n];\n\nconst row = (values) => ({\n  values: values.map((value) => {\n    if (typeof value === 'number') {\n      return { userEnteredValue: { numberValue: value } };\n    }\n\n    if (typeof value === 'string' && value.startsWith('=')) {\n      return { userEnteredValue: { formulaValue: value } };\n    }\n\n    return { userEnteredValue: { stringValue: String(value ?? '') } };\n  }),\n});\n\nconst spreadsheet_body = {\n  properties: {\n    title: state.fm_sheet_name,\n  },\n  sheets: [\n    {\n      properties: {\n        title: 'Materials',\n      },\n      data: [\n        {\n          startRow: 0,\n          startColumn: 0,\n          rowData: [\n            row(headers),\n            ...materials.map((m, i) =>\n              row([\n                m.material,\n                m.measure,\n                'By Client',\n                Number(m.unit_price || 0),\n                Number(m.qty || 0),\n                `=D${i + 2}*E${i + 2}`,\n                m.specs_model,\n                m.purchase_link,\n                '',\n                'Not ordered',\n                m.notes,\n              ])\n            ),\n          ],\n        },\n      ],\n    },\n  ],\n};\n\nreturn [\n  {\n    json: {\n      ...$json,\n      spreadsheet_body,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        224
+      ],
+      "id": "06983be4-520d-405f-ac32-0a73c65f1d3c",
+      "name": "Build Sheets Body"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        752,
+        224
+      ],
+      "id": "ed945f04-f1b5-4e20-b1a9-e8e3cdd2d210",
+      "name": "Restore State"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1136,
+        224
+      ],
+      "id": "cae54adb-e16f-4275-b7ae-67743a605257",
+      "name": "Restore State1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Build Sheets Body",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Restore State",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Restore State1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "HTTP: Sheets - Create Spreadsheet": {
+      "main": [
+        [
+          {
+            "node": "Restore State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Drive - Move Sheet to Folder": {
+      "main": [
+        [
+          {
+            "node": "Restore State1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Build Sheets Body",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Restore State",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Restore State1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Build Sheets Body": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Sheets - Create Spreadsheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore State": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Drive - Move Sheet to Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore State1": {
+      "main": [
+        [
+          {
+            "node": "Set: Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f9ff9e95-f6ad-46ff-aa88-2c5f86a6dabc",
+  "meta": {
+    "instanceId": "3ceb589bad47c552dc5f920f0a41395dfd8beb13ed2d06dbe2f26e54324f15ac"
+  },
+  "nodeGroups": [],
+  "id": "7Fc2L2F0VGA29vb3",
+  "tags": []
+}

@@ -47,7 +47,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        368,
+        576,
         224
       ],
       "credentials": {
@@ -59,6 +59,21 @@
     },
     {
       "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n  {\n    state: $json.state\n  }\n}}",
+        "options": {}
+      },
+      "id": "28511c0b-5cbc-442a-98ea-1ef4d65416e9",
+      "name": "Set/Edit: Get State",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        368,
+        224
+      ]
+    },
+    {
+      "parameters": {
         "jsCode": "const inp = $input.first().json;\nconst subfolders = [\n  'Contract and Change Orders',\n  'Finish Material',\n  'Inspirations',\n  'Invoices',\n  'Plans and Reports',\n  'Media',\n];\n// inp is the Drive Create Folder response: { id, name, mimeType }\n// Spread it so each batch item carries the folder id, then add subfolder_name\nreturn subfolders.map(name => ({ json: { ...inp, subfolder_name: name } }));"
       },
       "id": "1578320b-636f-4c51-9352-bf8c92d6a0e6",
@@ -66,7 +81,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        576,
+        784,
         224
       ]
     },
@@ -86,7 +101,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        784,
+        992,
         224
       ],
       "credentials": {
@@ -141,7 +156,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nconst state = $json.state;\nconst projectFolder = $('HTTP: Drive - Create Project Folder').first().json;\n\nconst subfolders = items.map(item => ({\n  id: item.json.id,\n  name: item.json.name,\n}));\n\nconst subfolderByName = Object.fromEntries(\n  subfolders.map(folder => [folder.name, folder.id])\n);\n\nconst contractFolderId = subfolderByName['Contract and Change Orders'];\n\nif (!contractFolderId) {\n  throw new Error(\n    'Missing subfolder: Contract and Change Orders. Created: ' +\n    subfolders.map(f => f.name).join(', ')\n  );\n}\n\nreturn [{\n  json: {\n    state,\n    workspace: {\n      folder_id: projectFolder.id,\n      folder_name: projectFolder.name,\n      subfolders,\n      subfolder_ids: {\n        contracts: contractFolderId,\n        finish_material: subfolderByName['Finish Material'],\n        inspirations: subfolderByName['Inspirations'],\n        invoices: subfolderByName['Invoices'],\n        plans_reports: subfolderByName['Plans and Reports'],\n        media: subfolderByName['Media'],\n      },\n    },\n  },\n}];"
+        "jsCode": "const items = $input.all();\n\nconst state = $('Set/Edit: Get State').first().json.state;\nconst projectFolder = $('HTTP: Drive - Create Project Folder').first().json;\n\nconst subfolders = items.map(item => ({\n  id: item.json.id,\n  name: item.json.name,\n}));\n\nconst subfolderByName = Object.fromEntries(\n  subfolders.map(folder => [folder.name, folder.id])\n);\n\nconst requiredSubfolders = [\n  'Contract and Change Orders',\n  'Finish Material',\n  'Inspirations',\n  'Invoices',\n  'Plans and Reports',\n  'Media',\n];\n\nconst missingSubfolders = requiredSubfolders.filter(name => !subfolderByName[name]);\n\nif (missingSubfolders.length > 0) {\n  throw new Error(\n    'Missing subfolders: ' + missingSubfolders.join(', ') + '. Created: ' +\n    subfolders.map(f => f.name).join(', ')\n  );\n}\n\nreturn [{\n  json: {\n    state,\n    workspace: {\n      folder_id: projectFolder.id,\n      folder_name: projectFolder.name,\n      subfolders,\n      subfolder_ids: {\n        contracts: subfolderByName['Contract and Change Orders'],\n        finish_material: subfolderByName['Finish Material'],\n        inspirations: subfolderByName['Inspirations'],\n        invoices: subfolderByName['Invoices'],\n        plans_reports: subfolderByName['Plans and Reports'],\n        media: subfolderByName['Media'],\n      },\n    },\n  },\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -183,21 +198,6 @@
           "name": "Google Drive OAuth - 2026"
         }
       }
-    },
-    {
-      "parameters": {
-        "mode": "combine",
-        "combineBy": "combineByPosition",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        1040,
-        224
-      ],
-      "id": "28511c0b-5cbc-442a-98ea-1ef4d65416e9",
-      "name": "Get State"
     }
   ],
   "pinData": {},
@@ -206,14 +206,20 @@
       "main": [
         [
           {
+            "node": "Set/Edit: Get State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set/Edit: Get State": {
+      "main": [
+        [
+          {
             "node": "HTTP: Drive - Create Project Folder",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Get State",
-            "type": "main",
-            "index": 1
           }
         ]
       ]
@@ -244,7 +250,7 @@
       "main": [
         [
           {
-            "node": "Get State",
+            "node": "Collapse Back To One Item",
             "type": "main",
             "index": 0
           }
@@ -278,17 +284,6 @@
         [
           {
             "node": "Set: Return Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get State": {
-      "main": [
-        [
-          {
-            "node": "Collapse Back To One Item",
             "type": "main",
             "index": 0
           }
